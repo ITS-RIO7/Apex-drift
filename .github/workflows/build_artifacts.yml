@@ -1,0 +1,165 @@
+name: Build Multi-Platform Flutter (APK, IPA, EXE, Web)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =============================================================
+  # 1. BUILD ANDROID APK
+  # =============================================================
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Generate Android Scaffolding & Build APK
+        run: |
+          if [ -d "flutter_app" ]; then cd flutter_app; fi
+          flutter create . --platforms=android --org com.apexdrift --project-name apex_drift_3d
+          flutter pub get
+          flutter build apk --release
+
+      - name: Upload Android Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApexDrift-Android-APK
+          path: |
+            **/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: warn
+
+  # =============================================================
+  # 2. BUILD WINDOWS EXE
+  # =============================================================
+  build-windows:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Enable Desktop & Build Windows Release
+        shell: bash
+        run: |
+          if [ -d "flutter_app" ]; then cd flutter_app; fi
+          flutter config --enable-windows-desktop
+          flutter create . --platforms=windows --org com.apexdrift --project-name apex_drift_3d
+          flutter pub get
+          flutter build windows --release
+
+      - name: Compress Windows Release Bundle to ZIP
+        shell: pwsh
+        run: |
+          $buildFolder = Get-ChildItem -Path . -Filter "Release" -Recurse | Where-Object { $_.FullName -like "*windows*runner*Release*" } | Select-Object -First 1
+          if ($buildFolder) {
+            Write-Host "Packaging build folder: $($buildFolder.FullName)"
+            Compress-Archive -Path "$($buildFolder.FullName)\*" -DestinationPath "ApexDrift-Windows-x64.zip" -Force
+          } else {
+            Write-Warning "Windows release folder not found in default path"
+          }
+
+      - name: Upload Windows EXE Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApexDrift-Windows-x64-EXE
+          path: ApexDrift-Windows-x64.zip
+          if-no-files-found: warn
+
+  # =============================================================
+  # 3. BUILD IOS IPA (Unsigned Distribution Package)
+  # =============================================================
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Generate iOS Scaffolding & Build Payload
+        run: |
+          if [ -d "flutter_app" ]; then cd flutter_app; fi
+          flutter create . --platforms=ios --org com.apexdrift --project-name apex_drift_3d
+          flutter pub get
+          flutter build ios --release --no-codesign
+          
+          # Find output Runner.app and package into standard IPA structure
+          APP_PATH=$(find . -name "Runner.app" -type d | head -n 1)
+          if [ -n "$APP_PATH" ]; then
+            mkdir -p Payload
+            cp -r "$APP_PATH" Payload/
+            zip -r ApexDrift-iOS-Unsigned.ipa Payload
+            rm -rf Payload
+          fi
+
+      - name: Upload iOS IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApexDrift-iOS-IPA
+          path: |
+            **/ApexDrift-iOS-Unsigned.ipa
+            ApexDrift-iOS-Unsigned.ipa
+          if-no-files-found: warn
+
+  # =============================================================
+  # 4. BUILD WEB HTML5
+  # =============================================================
+  build-web:
+    name: Build Web HTML5
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Generate Web Scaffolding & Build
+        run: |
+          if [ -d "flutter_app" ]; then cd flutter_app; fi
+          flutter create . --platforms=web --org com.apexdrift --project-name apex_drift_3d
+          flutter pub get
+          flutter build web --release --base-href /
+
+      - name: Upload Web Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApexDrift-Web-HTML5
+          path: |
+            **/build/web
+          if-no-files-found: warn
