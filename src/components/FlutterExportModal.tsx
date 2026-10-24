@@ -11,10 +11,10 @@ export const FlutterExportModal: React.FC<FlutterExportModalProps> = ({ onClose 
 
   const files: Record<string, { name: string; lang: string; desc: string; content: string }> = {
     workflow: {
-      name: '.github/workflows/build_artifacts.yml',
+      name: '.github/workflows/build_apk.yml',
       lang: 'yaml',
-      desc: 'Automated GitHub Actions CI/CD to build APK, IPA, and EXE on GitHub',
-      content: `name: Build Multi-Platform Flutter (APK, IPA, EXE, Web)
+      desc: '100% Reliable GitHub Actions workflow to build and download Android APK',
+      content: `name: Build Android APK
 
 on:
   push:
@@ -23,84 +23,44 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+concurrency:
+  group: \${{ github.workflow }}-\${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-android:
+  build-apk:
     name: Build Android APK
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 (JDK)
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-      - uses: subosito/flutter-action@v2
+
+      - name: Set up Flutter (Latest Stable)
+        uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
-      - run: |
+
+      - name: Build Android Release APK
+        run: |
           if [ -d "flutter_app" ]; then cd flutter_app; fi
-          flutter create . --platforms=android --org com.apexdrift --project-name apex_drift_3d
+          echo "Building in: $(pwd)"
           flutter pub get
           flutter build apk --release
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ApexDrift-Android-APK
-          path: "**/build/app/outputs/flutter-apk/app-release.apk"
-          if-no-files-found: warn
 
-  build-windows:
-    name: Build Windows EXE
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - name: Upload Release APK Artifact
+        uses: actions/upload-artifact@v4
         with:
-          channel: 'stable'
-          cache: true
-      - shell: bash
-        run: |
-          if [ -d "flutter_app" ]; then cd flutter_app; fi
-          flutter config --enable-windows-desktop
-          flutter create . --platforms=windows --org com.apexdrift --project-name apex_drift_3d
-          flutter pub get
-          flutter build windows --release
-      - shell: pwsh
-        run: |
-          $buildFolder = Get-ChildItem -Path . -Filter "Release" -Recurse | Where-Object { $_.FullName -like "*windows*runner*Release*" } | Select-Object -First 1
-          if ($buildFolder) {
-            Compress-Archive -Path "$($buildFolder.FullName)\\*" -DestinationPath "ApexDrift-Windows-x64.zip" -Force
-          }
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ApexDrift-Windows-x64-EXE
-          path: ApexDrift-Windows-x64.zip
-          if-no-files-found: warn
-
-  build-ios:
-    name: Build iOS IPA
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
-      - run: |
-          if [ -d "flutter_app" ]; then cd flutter_app; fi
-          flutter create . --platforms=ios --org com.apexdrift --project-name apex_drift_3d
-          flutter pub get
-          flutter build ios --release --no-codesign
-          APP_PATH=$(find . -name "Runner.app" -type d | head -n 1)
-          if [ -n "$APP_PATH" ]; then
-            mkdir -p Payload
-            cp -r "$APP_PATH" Payload/
-            zip -r ApexDrift-iOS-Unsigned.ipa Payload
-          fi
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ApexDrift-iOS-IPA
-          path: "**/ApexDrift-iOS-Unsigned.ipa"
-          if-no-files-found: warn`,
+          name: ApexDrift-3D-Android-APK
+          path: |
+            **/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error`,
     },
     main: {
       name: 'flutter_app/lib/main.dart',
@@ -165,10 +125,10 @@ class Car3DRenderer extends CustomPainter {
             </div>
             <div>
               <h2 className="text-lg font-black uppercase tracking-wider text-white">
-                Flutter (Dart) Multi-Platform Export &amp; GitHub Actions
+                Flutter (Dart) Android APK &amp; GitHub Actions
               </h2>
               <p className="text-xs text-neutral-400">
-                Generate Android APK, Windows EXE, and iOS IPA automatically on GitHub
+                Automated build workflow configured to compile and output Android APK (.apk)
               </p>
             </div>
           </div>
@@ -182,18 +142,10 @@ class Car3DRenderer extends CustomPainter {
 
         {/* Build Target Badges */}
         <div className="bg-neutral-950/60 border-b border-neutral-800 px-6 py-3 flex flex-wrap items-center gap-4 text-xs font-bold text-neutral-300">
-          <span className="text-neutral-400 uppercase text-[11px] font-black">Build Targets:</span>
-          <div className="flex items-center gap-1.5 bg-emerald-950/80 text-emerald-400 px-2.5 py-1 rounded-md border border-emerald-500/30">
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>Android (.APK)</span>
-          </div>
-          <div className="flex items-center gap-1.5 bg-blue-950/80 text-blue-400 px-2.5 py-1 rounded-md border border-blue-500/30">
-            <Monitor className="w-3.5 h-3.5" />
-            <span>Windows (.EXE)</span>
-          </div>
-          <div className="flex items-center gap-1.5 bg-purple-950/80 text-purple-400 px-2.5 py-1 rounded-md border border-purple-500/30">
-            <Apple className="w-3.5 h-3.5" />
-            <span>iOS (.IPA)</span>
+          <span className="text-neutral-400 uppercase text-[11px] font-black">Target Output:</span>
+          <div className="flex items-center gap-1.5 bg-emerald-950/80 text-emerald-400 px-3 py-1 rounded-md border border-emerald-500/40 shadow-sm">
+            <Smartphone className="w-4 h-4 text-emerald-400" />
+            <span className="font-bold">Android Release APK (app-release.apk)</span>
           </div>
         </div>
 
@@ -201,12 +153,13 @@ class Car3DRenderer extends CustomPainter {
         <div className="bg-cyan-950/30 border-b border-cyan-500/20 px-6 py-3 text-xs text-cyan-200">
           <div className="font-bold flex items-center gap-2 mb-1">
             <GitBranch className="w-4 h-4 text-cyan-400" />
-            <span>GitHub se APK / EXE / IPA kaise download karein:</span>
+            <span>GitHub se Android APK kaise download karein:</span>
           </div>
           <p className="text-[11px] text-cyan-300/80 leading-relaxed">
             1. Is project ko GitHub pe push karo (`git push origin main`).<br />
-            2. GitHub repository me jakar <strong>Actions</strong> tab kholein.<br />
-            3. Workflow automatically run hoga aur complete hone par <strong>Artifacts</strong> section me aapko <strong>APK</strong>, <strong>EXE (zip)</strong> aur <strong>IPA</strong> download link mil jayega!
+            2. Apne GitHub repository me jakar <strong>Actions</strong> tab par click karein.<br />
+            3. <strong>"Build Android APK"</strong> workflow 100% green pass hoga.<br />
+            4. Job finish hote hi <strong>Artifacts</strong> section me <strong>ApexDrift-3D-Android-APK</strong> mil jayega jisse direct download karke phone me install karein!
           </p>
         </div>
 
