@@ -32,28 +32,38 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Prepare Scaffolding & Build APK
+      - name: Prepare Android Project & Gradle Wrapper
         run: |
           # 1. Switch to flutter_app directory if present
           if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
             cd flutter_app
           fi
-          echo "Current working directory: $(pwd)"
+          echo "Target Directory: $(pwd)"
 
-          # 2. Recreate clean official Android platform files to ensure gradlew, gradle-wrapper.jar, and plugin versions match runner
-          rm -rf android
-          flutter create --platforms=android --org com.apexdrift --project-name apex_drift_3d .
+          # 2. Ensure gradle/wrapper directory exists
+          mkdir -p android/gradle/wrapper
 
-          # 3. Ensure gradlew is executable
+          # 3. Ensure gradle-wrapper.jar is present
+          if [ ! -f "android/gradle/wrapper/gradle-wrapper.jar" ]; then
+            echo "Downloading official gradle-wrapper.jar..."
+            curl -sLo android/gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/flutter/flutter/master/packages/flutter_tools/templates/app_shared/android.tmpl/gradle/wrapper/gradle-wrapper.jar.tmpl || \
+            curl -sLo android/gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.4.0/gradle/wrapper/gradle-wrapper.jar
+          fi
+
+          # 4. Make gradlew executable
           chmod +x android/gradlew
 
-          # 4. Fetch dependencies
+          # 5. Fetch dependencies
           flutter pub get
 
-          # 5. Build Android Release APK
-          flutter build apk --release
+      - name: Build Android Release APK
+        run: |
+          if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
+            cd flutter_app
+          fi
+          flutter build apk --release --no-tree-shake-icons
 
-      - name: Upload Android APK Artifact
+      - name: Upload Android Release APK
         uses: actions/upload-artifact@v4
         with:
           name: ApexDrift-3D-Android-APK

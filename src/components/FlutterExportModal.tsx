@@ -47,17 +47,24 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Prepare Scaffolding & Build APK
+      - name: Prepare Android Project & Gradle Wrapper
         run: |
           if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
             cd flutter_app
           fi
-          echo "Current working directory: $(pwd)"
-          rm -rf android
-          flutter create --platforms=android --org com.apexdrift --project-name apex_drift_3d .
+          mkdir -p android/gradle/wrapper
+          if [ ! -f "android/gradle/wrapper/gradle-wrapper.jar" ]; then
+            curl -sLo android/gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.4.0/gradle/wrapper/gradle-wrapper.jar
+          fi
           chmod +x android/gradlew
           flutter pub get
-          flutter build apk --release
+
+      - name: Build Android Release APK
+        run: |
+          if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
+            cd flutter_app
+          fi
+          flutter build apk --release --no-tree-shake-icons
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4

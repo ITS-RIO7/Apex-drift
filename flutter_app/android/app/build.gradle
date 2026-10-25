@@ -18,15 +18,14 @@ def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '
 android {
     namespace "com.apexdrift.game"
     compileSdk 34
-    ndkVersion flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     sourceSets {
@@ -43,7 +42,6 @@ android {
 
     buildTypes {
         release {
-            // Uses debug signing key so GitHub Actions builds APK immediately without requiring secret keystores
             signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
