@@ -47,19 +47,25 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Build Android Release APK
+      - name: Prepare Scaffolding & Build APK
         run: |
-          if [ -d "flutter_app" ]; then cd flutter_app; fi
-          echo "Building in: $(pwd)"
+          if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
+            cd flutter_app
+          fi
+          echo "Current working directory: $(pwd)"
+          rm -rf android
+          flutter create --platforms=android --org com.apexdrift --project-name apex_drift_3d .
+          chmod +x android/gradlew
           flutter pub get
           flutter build apk --release
 
-      - name: Upload Release APK Artifact
+      - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ApexDrift-3D-Android-APK
           path: |
             **/build/app/outputs/flutter-apk/app-release.apk
+            **/build/app/outputs/apk/release/*.apk
           if-no-files-found: error`,
     },
     main: {

@@ -13,35 +13,51 @@ concurrency:
 
 jobs:
   build-apk:
-    name: Build Android APK
+    name: Build Android Release APK
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17 (JDK)
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle'
 
-      - name: Set up Flutter (Latest Stable)
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: Build Android Release APK
+      - name: Prepare Scaffolding & Build APK
         run: |
-          if [ -d "flutter_app" ]; then cd flutter_app; fi
-          echo "Working in directory: $(pwd)"
+          # 1. Switch to flutter_app directory if present
+          if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
+            cd flutter_app
+          fi
+          echo "Current working directory: $(pwd)"
+
+          # 2. Recreate clean official Android platform files to ensure gradlew, gradle-wrapper.jar, and plugin versions match runner
+          rm -rf android
+          flutter create --platforms=android --org com.apexdrift --project-name apex_drift_3d .
+
+          # 3. Ensure gradlew is executable
+          chmod +x android/gradlew
+
+          # 4. Fetch dependencies
           flutter pub get
+
+          # 5. Build Android Release APK
           flutter build apk --release
 
-      - name: Upload Release APK Artifact
+      - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ApexDrift-3D-Android-APK
           path: |
             **/build/app/outputs/flutter-apk/app-release.apk
+            **/build/app/outputs/apk/release/*.apk
           if-no-files-found: error
