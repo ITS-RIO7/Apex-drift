@@ -53,8 +53,9 @@ jobs:
             cd flutter_app
           fi
           mkdir -p android/gradle/wrapper
-          if [ ! -f "android/gradle/wrapper/gradle-wrapper.jar" ]; then
-            curl -sLo android/gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.4.0/gradle/wrapper/gradle-wrapper.jar
+          JAR_PATH="android/gradle/wrapper/gradle-wrapper.jar"
+          if [ ! -f "$JAR_PATH" ] || [ $(wc -c < "$JAR_PATH") -lt 10000 ]; then
+            curl -f -L "https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar" -o "$JAR_PATH"
           fi
           chmod +x android/gradlew
           flutter pub get

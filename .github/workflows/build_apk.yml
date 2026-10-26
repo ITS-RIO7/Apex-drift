@@ -19,14 +19,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up Java 17 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
 
-      - name: Set up Flutter
+      - name: Set up Flutter (Stable)
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
@@ -43,12 +43,15 @@ jobs:
           # 2. Ensure gradle/wrapper directory exists
           mkdir -p android/gradle/wrapper
 
-          # 3. Ensure gradle-wrapper.jar is present
-          if [ ! -f "android/gradle/wrapper/gradle-wrapper.jar" ]; then
-            echo "Downloading official gradle-wrapper.jar..."
-            curl -sLo android/gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/flutter/flutter/master/packages/flutter_tools/templates/app_shared/android.tmpl/gradle/wrapper/gradle-wrapper.jar.tmpl || \
-            curl -sLo android/gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.4.0/gradle/wrapper/gradle-wrapper.jar
+          # 3. Ensure gradle-wrapper.jar is a valid binary (> 10KB)
+          JAR_PATH="android/gradle/wrapper/gradle-wrapper.jar"
+          if [ ! -f "$JAR_PATH" ] || [ $(wc -c < "$JAR_PATH") -lt 10000 ]; then
+            echo "Downloading official Gradle wrapper JAR (8.4)..."
+            curl -f -L "https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar" -o "$JAR_PATH"
           fi
+
+          # Verify JAR size
+          ls -la "$JAR_PATH"
 
           # 4. Make gradlew executable
           chmod +x android/gradlew
