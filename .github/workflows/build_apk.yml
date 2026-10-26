@@ -19,7 +19,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17 (Temurin)
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -32,38 +32,38 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Prepare Android Project & Gradle Wrapper
-        run: |
-          # 1. Switch to flutter_app directory if present
-          if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
-            cd flutter_app
-          fi
-          echo "Target Directory: $(pwd)"
-
-          # 2. Ensure gradle/wrapper directory exists
-          mkdir -p android/gradle/wrapper
-
-          # 3. Ensure gradle-wrapper.jar is a valid binary (> 10KB)
-          JAR_PATH="android/gradle/wrapper/gradle-wrapper.jar"
-          if [ ! -f "$JAR_PATH" ] || [ $(wc -c < "$JAR_PATH") -lt 10000 ]; then
-            echo "Downloading official Gradle wrapper JAR (8.4)..."
-            curl -f -L "https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar" -o "$JAR_PATH"
-          fi
-
-          # Verify JAR size
-          ls -la "$JAR_PATH"
-
-          # 4. Make gradlew executable
-          chmod +x android/gradlew
-
-          # 5. Fetch dependencies
-          flutter pub get
-
       - name: Build Android Release APK
         run: |
+          # 1. Switch to project directory
           if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
             cd flutter_app
           fi
+          echo "Working in: $(pwd)"
+
+          # 2. Write local.properties with runner SDK paths
+          mkdir -p android
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "sdk.dir=$ANDROID_HOME" >> android/local.properties
+
+          # 3. Ensure Gradle wrapper jar is verified binary (>10KB)
+          mkdir -p android/gradle/wrapper
+          JAR_PATH="android/gradle/wrapper/gradle-wrapper.jar"
+          if [ ! -f "$JAR_PATH" ] || [ $(wc -c < "$JAR_PATH") -lt 10000 ]; then
+            echo "Fetching Gradle wrapper binary..."
+            curl -f -L "https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar" -o "$JAR_PATH"
+          fi
+          ls -la "$JAR_PATH"
+
+          # 4. Ensure gradlew is executable
+          chmod +x android/gradlew
+
+          # 5. Accept Android SDK licenses if needed
+          yes | flutter doctor --android-licenses 2>/dev/null || true
+
+          # 6. Fetch dependencies
+          flutter pub get
+
+          # 7. Compile Release APK
           flutter build apk --release --no-tree-shake-icons
 
       - name: Upload Android Release APK

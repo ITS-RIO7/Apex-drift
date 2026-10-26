@@ -47,11 +47,14 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Prepare Android Project & Gradle Wrapper
+      - name: Build Android Release APK
         run: |
           if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
             cd flutter_app
           fi
+          mkdir -p android
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "sdk.dir=$ANDROID_HOME" >> android/local.properties
           mkdir -p android/gradle/wrapper
           JAR_PATH="android/gradle/wrapper/gradle-wrapper.jar"
           if [ ! -f "$JAR_PATH" ] || [ $(wc -c < "$JAR_PATH") -lt 10000 ]; then
@@ -59,12 +62,6 @@ jobs:
           fi
           chmod +x android/gradlew
           flutter pub get
-
-      - name: Build Android Release APK
-        run: |
-          if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
-            cd flutter_app
-          fi
           flutter build apk --release --no-tree-shake-icons
 
       - name: Upload Android APK Artifact
