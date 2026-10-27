@@ -49,28 +49,28 @@ jobs:
 
       - name: Build Android Release APK
         run: |
-          if [ -d "flutter_app" ] && [ -f "flutter_app/pubspec.yaml" ]; then
-            cd flutter_app
+          if [ -d "flutter_app/lib" ]; then
+            SRC_DIR="flutter_app"
+          else
+            SRC_DIR="."
           fi
-          mkdir -p android
-          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
-          echo "sdk.dir=$ANDROID_HOME" >> android/local.properties
-          mkdir -p android/gradle/wrapper
-          JAR_PATH="android/gradle/wrapper/gradle-wrapper.jar"
-          if [ ! -f "$JAR_PATH" ] || [ $(wc -c < "$JAR_PATH") -lt 10000 ]; then
-            curl -f -L "https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar" -o "$JAR_PATH"
-          fi
-          chmod +x android/gradlew
+          echo "Found source code in: $SRC_DIR"
+          rm -rf /tmp/app_build
+          flutter create --org com.apexdrift --project-name apex_drift_3d /tmp/app_build
+          cp "$SRC_DIR/pubspec.yaml" /tmp/app_build/pubspec.yaml
+          rm -rf /tmp/app_build/lib
+          cp -r "$SRC_DIR/lib" /tmp/app_build/lib
+          cd /tmp/app_build
           flutter pub get
           flutter build apk --release --no-tree-shake-icons
+          mkdir -p "$GITHUB_WORKSPACE/build/app/outputs/flutter-apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "$GITHUB_WORKSPACE/build/app/outputs/flutter-apk/app-release.apk"
 
-      - name: Upload Android APK Artifact
+      - name: Upload Android Release APK
         uses: actions/upload-artifact@v4
         with:
           name: ApexDrift-3D-Android-APK
-          path: |
-            **/build/app/outputs/flutter-apk/app-release.apk
-            **/build/app/outputs/apk/release/*.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error`,
     },
     main: {
